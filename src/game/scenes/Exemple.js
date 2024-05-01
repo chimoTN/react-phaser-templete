@@ -50,25 +50,68 @@ export class Example extends Scene
 
     create ()
     {
+
+        // =================================== //
+        // ========== ON SET LA MAP ========== //
+        // =================================== //
+        
         const map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('kenney_redux_64x64');
         const layer = map.createLayer(0, tileset, 0, 0);
 
-        // Set up the layer to have matter bodies. Any colliding tiles will be given a Matter body.
+
+        // =================================== //
+        // ==========   Collision   ========== //
+        // =================================== //
+
         map.setCollisionByProperty({ collides: true });
-
-
         this.matter.world.convertTilemapLayer(layer);
 
+        
+        const collisionLayer = map.getObjectLayer('ExitMap')['objects'];
+
+        collisionLayer.forEach(object => {
+            if (object.name === 'ExitMap') {
+                console.log("in the if ExitMap")
+                const jungleSensor = this.matter.add.rectangle(object.x + object.width / 2, object.y + object.height / 2, object.width, object.height, {collides: true, isSensor: true });
+                jungleSensor.label = 'ExitMap';
+            }
+        });
+        
+
+        //collision des sortie
+        const objectLayer = map.getObjectLayer('ExitMap').objects;
+        objectLayer.forEach(obj => {
+            const { x, y, width, height, properties } = obj;
+            const objectBody = this.matter.add.rectangle(x + width / 2, y + height / 2, width, height, {
+                isSensor: true,  // Faites en sorte que l'objet ne cause pas de collision physique mais déclenche des événements
+                label: 'ExitMap',  // Utiliser une étiquette générique pour tous les objets de sortie
+                isStatic:true
+            });
+            objectBody.uniqueID = properties.find(p => p.name === 3);  // Supposons que chaque objet a une propriété 'uniqueID'
+        });
+
+        
+        // =================================== //
+        // ======== AFFICHAGE DES BUG ======== //
+        // =================================== //
 
         this.matter.world.setBounds(map.widthInPixels, map.heightInPixels);
         this.matter.world.createDebugGraphic();
         this.matter.world.drawDebug = false;
 
+        // =================================== //
+        // ======== ECOUTE DES TOUCHE ======== //
+        // =================================== //
+
         this.cursors = this.input.keyboard.createCursorKeys();
         this.smoothedControls = new SmoothedHorionztalControl(0.0005);
 
-        // The player is a collection of bodies and sensors
+
+        // =================================== //
+        // ========== INIT LE PLAYER ========= //
+        // =================================== //
+
         this.playerController = {
             matterSprite: this.matter.add.sprite(0, 0, 'player', 4),
             blocked: {
@@ -181,40 +224,7 @@ export class Example extends Scene
         });
 
 
-
-        // Accéder à l'objet et le créer comme un corps physique
-        const objectLayer = map.getObjectLayer('ExitMap');
-        objectLayer.objects.forEach(obj => {
-
-            console.log("in object layer")
-            if (obj.name === 'ExitMap') {  // Utilisez le nom ou une autre propriété pour identifier l'objet
-
-                console.log("get ExitMap")
-
-                const { x, y, width, height } = obj;
-                const objectBody = this.matter.add.rectangle(x + width / 2, y - height / 2, width, height, {
-                    isStatic: true
-                });
-
-                objectBody.gameObject = this.add.rectangle(x + width / 2, y - height / 2, width, height, 0xff0000, 0.5);
-                this.matter.add.gameObject(objectBody.gameObject, objectBody);
-                objectBody.label = 'ExitMap';  // Étiqueter le corps pour identification ultérieure
-
-                this.matter.world.on('collisionstart', function (event, bodyA, bodyB) {
-                    if ((bodyA.label === 'playerBody' && bodyB.label === 'collisionObject') ||
-                        (bodyB.label === 'playerBody' && bodyA.label === 'collisionObject')) {
-                        console.log('Collision detected with the designated object!');
-                        // Gérez votre logique de collision ici
-                        console.log("Coucou la miff")
-                    }
-                });
-            }
-        });
-
-        
-
-
-
+    
 
         // Use matter events to detect whether the player is touching a surface to the left, right or
         // bottom.
@@ -257,6 +267,15 @@ export class Example extends Scene
                 else if ((bodyA === right && bodyB.isStatic) || (bodyB === right && bodyA.isStatic))
                 {
                     this.playerController.numTouching.right += 1;
+                }
+
+
+                //NEW
+                if ((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor)) {
+                    // Lorsque le joueur entre en collision avec l'objet "Jungle"
+                    console.log("JUNGLE")
+                    
+                    this.changeScene();
                 }
             }
         }, this);
