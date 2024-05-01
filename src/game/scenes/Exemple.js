@@ -1,41 +1,19 @@
-// Smoothed horizontal controls helper. This gives us a value between -1 and 1 depending on how long
-// the player has been pressing left or right, respectively.
+import SmoothedHorionztalControl from '../mecha/SmoothedHorionztalControl.js';
+import Player from '../mecha/Player.js';
+
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 
 
+export class Example extends Scene{
 
-class SmoothedHorionztalControl {
-    constructor(speed) {
-        this.msSpeed = speed;
-        this.value = 0;
-    }
-
-    moveLeft(delta) {
-        if (this.value > 0) { this.reset(); }
-        this.value -= this.msSpeed * delta;
-        if (this.value < -1) { this.value = -1; }
-    }
-
-    moveRight(delta) {
-        if (this.value < 0) { this.reset(); }
-        this.value += this.msSpeed * delta;
-        if (this.value > 1) { this.value = 1; }
-    }
-
-    reset() {
-        this.value = 0;
-    }
-}
-
-export class Example extends Scene
-{
     playerController;
     cursors;
     text;
     cam;
     smoothedControls;
-    
+    map;
+
     constructor() {
         super('Example');
     }
@@ -48,107 +26,34 @@ export class Example extends Scene
         this.load.image('box', 'public/assets/box-item-boxed.png');
     }
 
-    create ()
-    {
+    create (){
 
-        // =================================== //
         // ========== ON SET LA MAP ========== //
-        // =================================== //
-        
-        const map = this.make.tilemap({ key: 'map' });
-        const tileset = map.addTilesetImage('kenney_redux_64x64');
-        const layer = map.createLayer(0, tileset, 0, 0);
 
+        this.mapManager();
 
-        // =================================== //
-        // ==========   Collision   ========== //
-        // =================================== //
-
-        map.setCollisionByProperty({ collides: true });
-        this.matter.world.convertTilemapLayer(layer);
-
-        
-        const collisionLayer = map.getObjectLayer('ExitMap')['objects'];
-
-        collisionLayer.forEach(object => {
-            if (object.name === 'ExitMap') {
-                console.log("in the if ExitMap")
-                const jungleSensor = this.matter.add.rectangle(object.x + object.width / 2, object.y + object.height / 2, object.width, object.height, {collides: true, isSensor: true });
-                jungleSensor.label = 'ExitMap';
-            }
-        });
+        //Spawn
+        const spawnLayer = this.map.getObjectLayer('Spawn');
+        const Spawn = spawnLayer.objects.find(obj => obj.name === 'Spawn');
         
 
-        //collision des sortie
-        const objectLayer = map.getObjectLayer('ExitMap').objects;
-        objectLayer.forEach(obj => {
-            const { x, y, width, height, properties } = obj;
-            const objectBody = this.matter.add.rectangle(x + width / 2, y + height / 2, width, height, {
-                isSensor: true,  // Faites en sorte que l'objet ne cause pas de collision physique mais déclenche des événements
-                label: 'ExitMap',  // Utiliser une étiquette générique pour tous les objets de sortie
-                isStatic:true
-            });
-            objectBody.uniqueID = properties.find(p => p.name === 3);  // Supposons que chaque objet a une propriété 'uniqueID'
-        });
-
-        
-        // =================================== //
         // ======== AFFICHAGE DES BUG ======== //
-        // =================================== //
 
-        this.matter.world.setBounds(map.widthInPixels, map.heightInPixels);
+        this.matter.world.setBounds(this.map.widthInPixels, this.map.heightInPixels);
         this.matter.world.createDebugGraphic();
         this.matter.world.drawDebug = false;
 
-        // =================================== //
         // ======== ECOUTE DES TOUCHE ======== //
-        // =================================== //
 
+        
         this.cursors = this.input.keyboard.createCursorKeys();
         this.smoothedControls = new SmoothedHorionztalControl(0.0005);
+        this.playerController = new Player(this, Spawn.x, Spawn.y, 'player');
 
 
-        // =================================== //
-        // ========== INIT LE PLAYER ========= //
-        // =================================== //
+        console.log("SPAWN",Spawn.x,Spawn.y)
 
-        this.playerController = {
-            matterSprite: this.matter.add.sprite(0, 0, 'player', 4),
-            blocked: {
-                left: false,
-                right: false,
-                bottom: false
-            },
-            numTouching: {
-                left: 0,
-                right: 0,
-                bottom: 0
-            },
-            sensors: {
-                bottom: null,
-                left: null,
-                right: null
-            },
-            time: {
-                leftDown: 0,
-                rightDown: 0
-            },
-            lastJumpedAt: 0,
-            isDashing: false, // Indique si le joueur est en train de dasher
-            dashSpeed: 20,    // La vitesse de dash
-            dashDuration: 250, // Durée du dash en millisecondes
-            dashTime: 0,      // Quand le dash a été initié pour contrôler la durée
-            canAirDash: true,
-            speed: {
-                run: 4,
-                jump: 9
-            }
-        };
-
-
-        // ======================== //
-        // Dah MODS //
-        // ======================== //
+        // ======== Dah MODS ================//
 
         // Configuration de la touche Q pour le dash
         this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
@@ -160,74 +65,11 @@ export class Example extends Scene
         this.playerController.dashTime = 0; // Contrôle du timing du dash
 
 
-        
-        // other //
-        
-        const M = Phaser.Physics.Matter.Matter;
-        const w = this.playerController.matterSprite.width;
-        const h = this.playerController.matterSprite.height;
-
-        // The player's body is going to be a compound body:
-        //  - playerBody is the solid body that will physically interact with the world. It has a
-        //    chamfer (rounded edges) to avoid the problem of ghost vertices: http://www.iforce2d.net/b2dtut/ghost-vertices
-        //  - Left/right/bottom sensors that will not interact physically but will allow us to check if
-        //    the player is standing on solid ground or pushed up against a solid object.
-
-        // Move the sensor to player center
-        const sx = w / 2;
-        const sy = h / 2;
-
-        // The player's body is going to be a compound body.
-        const playerBody = M.Bodies.rectangle(sx, sy, w * 0.75, h, { chamfer: { radius: 10 } });
-        this.playerController.sensors.bottom = M.Bodies.rectangle(sx, h, sx, 5, { isSensor: true });
-        this.playerController.sensors.left = M.Bodies.rectangle(sx - w * 0.45, sy, 5, h * 0.25, { isSensor: true });
-        this.playerController.sensors.right = M.Bodies.rectangle(sx + w * 0.45, sy, 5, h * 0.25, { isSensor: true });
-        const compoundBody = M.Body.create({
-            parts: [
-                playerBody, this.playerController.sensors.bottom, this.playerController.sensors.left,
-                this.playerController.sensors.right
-            ],
-            friction: 0.01,
-            restitution: 0.05 // Prevent body from sticking against a wall
-        });
-
-        this.playerController.matterSprite
-            .setExistingBody(compoundBody)
-            .setFixedRotation() // Sets max inertia to prevent rotation
-            .setPosition(630, 1000);
-
-        this.matter.add.image(630, 750, 'box');
-        this.matter.add.image(630, 650, 'box');
-        this.matter.add.image(630, 550, 'box');
-
         this.cam = this.cameras.main;
-        this.cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        this.cam.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.smoothMoveCameraTowards(this.playerController.matterSprite);
 
-        this.anims.create({
-            key: 'left',
-            frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'right',
-            frames: this.anims.generateFrameNumbers('player', { start: 5, end: 8 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'idle',
-            frames: this.anims.generateFrameNumbers('player', { start: 4, end: 4 }),
-            frameRate: 10,
-            repeat: -1
-        });
 
-
-    
-
-        // Use matter events to detect whether the player is touching a surface to the left, right or
-        // bottom.
 
         // Before matter's update, reset the player's count of what surfaces it is touching.
         this.matter.world.on('beforeupdate', function (event) {
@@ -239,7 +81,7 @@ export class Example extends Scene
         // Loop over the active colliding pairs and count the surfaces the player is touching.
         this.matter.world.on('collisionactive', function (event)
         {
-            const playerBody = this.playerController.body;
+            const playerBody = this.body;
             const left = this.playerController.sensors.left;
             const right = this.playerController.sensors.right;
             const bottom = this.playerController.sensors.bottom;
@@ -268,7 +110,6 @@ export class Example extends Scene
                 {
                     this.playerController.numTouching.right += 1;
                 }
-
 
                 //NEW
                 if ((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor)) {
@@ -304,8 +145,8 @@ export class Example extends Scene
         EventBus.emit('current-scene-ready', this);
     }
 
-    update (time, delta)
-    {
+    update (time, delta){
+
         const matterSprite = this.playerController.matterSprite;
 
         // Horizontal movement
@@ -345,10 +186,10 @@ export class Example extends Scene
             matterSprite.anims.play('idle', true);
         }
 
-        // Jumping & wall jumping
-
-        // Add a slight delay between jumps since the sensors will still collide for a few frames after
-        // a jump is initiated
+        // ===============================//
+        // === Jumping & wall jumping === //
+        // ===============================// 
+        
         const canJump = (time - this.playerController.lastJumpedAt) > 250;
         if (this.cursors.up.isDown & canJump)
         {
@@ -472,18 +313,58 @@ export class Example extends Scene
         this.scene.start('matterForet');
     }
 
-    setupCollisionHandlers () {
-        console.log("get setupCollisionHandlers")
-        this.matter.world.on('collisionstart', function (event, bodyA, bodyB) {
-            if ((bodyA.label === 'playerBody' && bodyB.label === 'collisionObject') ||
-                (bodyB.label === 'playerBody' && bodyA.label === 'collisionObject')) {
-                console.log('Collision detected with the designated object!');
-                // Gérez votre logique de collision ici
-                console.log("Coucou la miff")
+    showDialogueBox(text) {
+        // Créez ou mettez à jour le texte ici
+        if (!this.dialogueBox) {
+            this.dialogueBox = this.add.text(npcClaude.x, npcClaude.y - 50, text, { font: '18px Arial', fill: '#ffffff', backgroundColor: '#000000' });
+        } else {
+            this.dialogueBox.setText(text);
+            this.dialogueBox.setVisible(true);
+        }
+    }
+
+    mapManager(){
+        
+        this.map = this.make.tilemap({ key: 'map' });
+        const tileset = this.map.addTilesetImage('kenney_redux_64x64');
+
+         this.map.layers.forEach((layer) => {
+
+            const createdLayer = this.map.createLayer(layer.name, tileset, 0, 0);
+            this.map.setCollisionByProperty({ collides: true });
+            this.matter.world.convertTilemapLayer(createdLayer);
+
+        });
+
+
+        // =================================== //
+        // ==========   Collision   ========== //
+        // =================================== //
+
+        
+        const collisionLayer = this.map.getObjectLayer('ExitMap')['objects'];
+
+        collisionLayer.forEach(object => {
+            if (object.name === 'ExitMap') {
+                console.log("in the if ExitMap")
+                const jungleSensor = this.matter.add.rectangle(object.x + object.width / 2, object.y + object.height / 2, object.width, object.height, {collides: true, isSensor: true });
+                jungleSensor.label = 'ExitMap';
             }
         });
         
-       
+
+        //collision des sortie
+        const objectLayer = this.map.getObjectLayer('ExitMap').objects;
+        objectLayer.forEach(obj => {
+            const { x, y, width, height, properties } = obj;
+            const objectBody = this.matter.add.rectangle(x + width / 2, y + height / 2, width, height, {
+                isSensor: true,  // Faites en sorte que l'objet ne cause pas de collision physique mais déclenche des événements
+                label: 'ExitMap',  // Utiliser une étiquette générique pour tous les objets de sortie
+                isStatic:true
+            });
+            objectBody.uniqueID = properties.find(p => p.name === 3);  // Supposons que chaque objet a une propriété 'uniqueID'
+        });
+
     }
 
 }

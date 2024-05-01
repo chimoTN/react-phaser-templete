@@ -1,5 +1,3 @@
-// Smoothed horizontal controls helper. This gives us a value between -1 and 1 depending on how long
-// the player has been pressing left or right, respectively.
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 
