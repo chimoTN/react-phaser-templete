@@ -21,8 +21,6 @@
         "vite"
     ],
     "scripts": {
-        "start": "serve -s build -l tcp://0.0.0.0:${PORT:-5000}",
-        "build-react": "react-scripts build",
         "dev": "vite --config vite/config.dev.mjs",
         "build": "vite build --config vite/config.prod.mjs"
     },
