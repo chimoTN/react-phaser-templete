@@ -1,4 +1,6 @@
 export default class Player {
+    text;
+
     constructor(scene, x, y, spriteKey) {
         this.scene = scene;
         this.matterSprite = scene.matter.add.sprite(x, y, spriteKey, 4);
@@ -37,9 +39,12 @@ export default class Player {
             pv:20,
             domage:3,
             defance:1,
+            experience:0,
         }
         this.setupAnimations();
         this.setupSensors(x,y);
+        this.setupStats(this.scene);
+
         console.log("this.matterSprite",this.matterSprite)
     }
 
@@ -74,17 +79,6 @@ export default class Player {
             .setPosition(x, y);
 
 
-        /*
-        this.cam = this.cameras.main;
-        this.cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-        this.smoothMoveCameraTowards(this.matterSprite);
-        */
-    
-
-        // Use matter events to detect whether the player is touching a surface to the left, right or
-        // bottom.
-
-
     }
 
     setupAnimations() {
@@ -107,6 +101,21 @@ export default class Player {
             repeat: -1
         });
 
-        
     }
+
+    setupStats(scene) {
+        this.text = scene.add.text(800, 10, '', {
+            fontSize: '20px',
+            padding: { x: 10, y: 10 },
+            backgroundColor: '#ffffff',
+            fill: '#000000'
+        });
+        this.text.setScrollFactor(0);
+    
+        this.text.setText([
+            'PV: ' + this.stats.pv,
+            'Experience: ' + this.stats.experience
+        ]);
+    };
+
 }

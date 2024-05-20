@@ -63,6 +63,83 @@ const App = () => {
         }
     }
 
+
+    const addMobs = () => {
+
+        const scene = phaserRef.current.scene;
+
+        if (scene)
+        {
+
+            const x = Phaser.Math.Between(0, scene.scale.width); 
+            const y = Phaser.Math.Between(0, scene.scale.height);
+
+            //  `add.sprite` is a Phaser GameObjectFactory method and it returns a Sprite Game Object instance
+            const star = scene.add.sprite(x, y, 'mob');
+
+
+            const { Matter } = Phaser.Physics;
+            const { width: w, height: h } = this.matterSprite;
+    
+            const M = Phaser.Physics.Matter.Matter;
+    
+            // Move the sensor to player center
+            const sx = w / 2;
+            const sy = h / 2;
+    
+            // The player's body is going to be a compound body.
+            const playerBody = M.Bodies.rectangle(sx, sy, w * 0.75, h, { chamfer: { radius: 10 } });
+            this.sensors.bottom = M.Bodies.rectangle(sx, h, sx, 5, { isSensor: true });
+            this.sensors.left = M.Bodies.rectangle(sx - w * 0.45, sy, 5, h * 0.25, { isSensor: true });
+            this.sensors.right = M.Bodies.rectangle(sx + w * 0.45, sy, 5, h * 0.25, { isSensor: true });
+            const compoundBody = M.Body.create({
+                parts: [
+                    playerBody, this.sensors.bottom, this.sensors.left,
+                    this.sensors.right
+                ],
+                friction: 0.01,
+                restitution: 0.05 // Prevent body from sticking against a wall
+            });
+    
+            star
+                .setExistingBody(compoundBody)
+                .setFixedRotation() // Sets max inertia to prevent rotation
+                .setPosition(x, y);
+
+
+            
+
+
+
+                // Activer la physique de la scène
+                scene.physics.world.enable(star);
+        
+                // Définir les propriétés physiques du mob
+                star.setCollideWorldBounds(true); // Permet au mob de rebondir sur les bords de la carte
+                star.setVelocityX(Phaser.Math.Between(-200, 200)); // Définit une vitesse horizontale aléatoire pour le mob
+        
+                // Ajouter une collision entre le mob et le monde
+                scene.physics.add.collider(star, scene.physics.world.bounds);
+        
+                // Créer une animation pour le mob (facultatif)
+                scene.anims.create({
+                    key: 'walk', // Nom de l'animation
+                    frames: scene.anims.generateFrameNumbers('star', { start: 0, end: 3 }), // Frames de l'animation
+                    frameRate: 10, // Vitesse de l'animation
+                    repeat: -1 // Répétition infinie de l'animation
+                });
+        
+                // Jouer l'animation du mob
+                mob.anims.play('walk', true);
+
+
+
+
+
+        }
+    }
+
+
     // Event emitted from the PhaserGame component
     const currentScene = (scene) => {
 
@@ -92,7 +169,7 @@ const App = () => {
                 </div>
 
                 <div>
-                    <button className="button"> Ouai </button>
+                    <button className="button" onClick={addMobs}> Add New Mobs </button>
                 </div>
             </div>
         </div>

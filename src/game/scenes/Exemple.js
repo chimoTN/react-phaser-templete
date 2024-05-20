@@ -10,9 +10,11 @@ export class Example extends Scene{
     playerController;
     cursors;
     text;
+    textPancart;
     cam;
     smoothedControls;
     map;
+    groupeMonstre;
 
     constructor() {
         super('Example');
@@ -22,20 +24,33 @@ export class Example extends Scene{
     {
         this.load.tilemapTiledJSON('map', 'public/assets/matter-platformer.json');
         this.load.image('kenney_redux_64x64', 'public/assets/kenney_redux_64x64.png');
+        this.load.image('pixi', 'public/assets/pixi.png');
         this.load.spritesheet('player', 'public/assets/dude-cropped.png', { frameWidth: 32, frameHeight: 42 });
         this.load.image('box', 'public/assets/box-item-boxed.png');
+
+
+        //Preload perso & ennemis
+        this.load.spritesheet("monstre", "public/assets/mobs/monstre.png", { frameWidth: 64, frameHeight: 64 });
+
     }
 
-    create (){
+    create () {
 
+        this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+   
         // ========== ON SET LA MAP ========== //
 
         this.mapManager();
 
-        //Spawn
+        //========== Spawn ==========  //
+
         const spawnLayer = this.map.getObjectLayer('Spawn');
         const Spawn = spawnLayer.objects.find(obj => obj.name === 'Spawn');
         
+        // ========= Interaction ======== //
+
+        //const InteractionLayer = this.map.getObjectLayer('Interaction');
+        //const Interaction = InteractionLayer.objects.find(obj => obj.name === 'Pancarte');
 
         // ======== AFFICHAGE DES BUG ======== //
 
@@ -52,6 +67,51 @@ export class Example extends Scene{
 
 
         console.log("SPAWN",Spawn.x,Spawn.y)
+
+
+        // ================================ //
+        // Collectibles
+        // ================================ //
+
+     
+            
+
+
+
+        const monstreLayer = this.map.getObjectLayer('Monstre').objects.filter(obj => obj.name === 'Monstre');
+        //this.groupeMonstre = [];  // Initialisation du groupe de monstres
+
+        monstreLayer.forEach(element => {
+
+            let { x, y, width, height } = element;
+
+            this.groupeMonstre = this.matter.add.image(x + width / 2, y + height / 2, "monstre", null, {
+                isStatic: true, 
+                chamfer: { radius: 10 } ,
+                label: 'Monstre',
+                isSensor: true, 
+            });
+
+            this.groupeMonstre.label = 'Monstre';
+        
+            //monstre.label = 'Monstre';
+            //this.groupeMonstre.push(monstre);
+        
+            this.groupeMonstre.setFrictionAir(0.05);
+            this.groupeMonstre.setMass(30);
+        
+            this.groupeMonstre.setBounce(0.9);
+
+            this.tweens.add({
+                targets: this.groupeMonstre,
+                x: this.groupeMonstre.x + 300, 
+                yoyo: true,
+                repeat: -1,
+                duration: 3000,
+                ease: 'Sine.easeInOut'
+            });
+        });
+
 
         // ======== Dah MODS ================//
 
@@ -91,33 +151,51 @@ export class Example extends Scene{
                 const bodyA = event.pairs[i].bodyA;
                 const bodyB = event.pairs[i].bodyB;
 
-                if (bodyA === playerBody || bodyB === playerBody)
-                {
+                if (bodyA === playerBody || bodyB === playerBody){
                     continue;
                 }
-                else if (bodyA === bottom || bodyB === bottom)
-                {
-                    // Standing on any surface counts (e.g. jumping off of a non-static crate).
+
+                else if (bodyA === bottom || bodyB === bottom){
                     this.playerController.numTouching.bottom += 1;
                 }
-                else if ((bodyA === left && bodyB.isStatic) || (bodyB === left && bodyA.isStatic))
-                {
-                    // Only static objects count since we don't want to be blocked by an object that we
-                    // can push around.
+                
+                else if ((bodyA === left && bodyB.isStatic) || (bodyB === left && bodyA.isStatic) && bodyA.label == "Rectangle Body"){
                     this.playerController.numTouching.left += 1;
                 }
-                else if ((bodyA === right && bodyB.isStatic) || (bodyB === right && bodyA.isStatic))
+
+                else if ((bodyA === right && bodyB.isStatic) || (bodyB === right && bodyA.isStatic) && bodyA.label == "Rectangle Body")
                 {
+                    console.log("playerController", bodyA.label)
                     this.playerController.numTouching.right += 1;
                 }
 
                 //NEW
-                if ((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor)) {
-                    // Lorsque le joueur entre en collision avec l'objet "Jungle"
-                    console.log("JUNGLE")
-                    
-                    this.changeScene();
+
+                if ((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor) && bodyB.label == "Monstre") {
+                    if(this.playerController.stats.pv <= 1){
+                        this.gameOver();
+                    }
+                    console.log("Monstre", bodyB.label)
+                    this.playerController.stats.pv = this.playerController.stats.pv - 10
+                    console.log("stats.pv",this.playerController.stats.pv)
                 }
+                else if ((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor) && bodyA.label == "ExitMap") {
+                    this.changeScene();
+                    console.log("changeScene", bodyA.label)
+                }
+
+                else if (((bodyA === right && bodyB.isSensor) || (bodyB === right && bodyA.isSensor)) && bodyA.label == "Pancarte") {
+                    console.log("Pancarte", bodyA.label)
+                    this.displayPancarteMessage();
+                }
+
+                else{
+                    this.destroyPancarteMessage();
+                }
+
+                
+
+               
             }
         }, this);
 
@@ -264,9 +342,23 @@ export class Example extends Scene{
             this.playerController.canAirDash = true; // Réinitialiser la capacité de air dash lorsque le joueur touche le sol
         }
 
+
+
+
+        if (Phaser.Input.Keyboard.JustDown(this.keyE)) {
+            this.toggleMessage();
+        }
     }
 
 
+
+
+
+
+
+
+
+    
 
     startDash(currentTime) {
         this.playerController.isDashing = true;
@@ -295,6 +387,39 @@ export class Example extends Scene{
         ]);
     }
 
+    showDialogueBox(x, y, text) {
+        // Créez ou mettez à jour le texte ici
+        if (!this.dialogueBox) {
+            this.dialogueBox = this.add.text(x, y - 50, text, { font: '18px Arial', fill: '#ffffff', backgroundColor: '#000000' });
+        } else {
+            this.dialogueBox.setText(text);
+            this.dialogueBox.setVisible(true);
+        }
+
+        
+    }
+    
+
+
+    toucherMonstre(player, monstre) {
+
+        if (!player.estInvincible) {
+            console.log("toucherMonstre 1 ") 
+            healthBar -= 5;
+            player.setTint(0xff0000);
+            if (healthBar === 5) {
+                healthBarImage1.visible = false;
+                healthBarImage2.visible = true;
+            }
+            player.estInvincible = true;
+            this.time.delayedCall(1000, () => {
+                player.setTint(0xffffff);
+                player.estInvincible = false;
+            });
+        }
+        console.log("toucherMonstre")
+    }
+
     smoothMoveCameraTowards (target, smoothFactor)
     {
         if (smoothFactor === undefined) { smoothFactor = 0; }
@@ -313,6 +438,11 @@ export class Example extends Scene{
         this.scene.start('matterForet');
     }
 
+    gameOver ()
+    {
+
+        this.scene.start('GameOver');
+    }
     showDialogueBox(text) {
         // Créez ou mettez à jour le texte ici
         if (!this.dialogueBox) {
@@ -327,13 +457,17 @@ export class Example extends Scene{
         
         this.map = this.make.tilemap({ key: 'map' });
         const tileset = this.map.addTilesetImage('kenney_redux_64x64');
+        const tileset2 = this.map.addTilesetImage('pixi');
 
-         this.map.layers.forEach((layer) => {
+        this.map.layers.forEach((layer) => {
 
             const createdLayer = this.map.createLayer(layer.name, tileset, 0, 0);
+
             this.map.setCollisionByProperty({ collides: true });
+            
             this.matter.world.convertTilemapLayer(createdLayer);
 
+            
         });
 
 
@@ -364,7 +498,63 @@ export class Example extends Scene{
             });
             objectBody.uniqueID = properties.find(p => p.name === 3);  // Supposons que chaque objet a une propriété 'uniqueID'
         });
+        
 
+        // ============================================= //
+        // ==========   Collision   Pancarte =========== //
+        // ============================================= //
+
+        // Setup interaction with 'Pancarte'
+        const interactionLayer = this.map.getObjectLayer('Interaction')['objects'];
+
+        interactionLayer.forEach(object => {
+            if (object.name === 'Pancarte') {
+                // Create a sensor rectangle for the Pancarte
+                const Pancarte = this.matter.add.rectangle(
+                    object.x + object.width / 2, 
+                    object.y + object.height / 2, 
+                    object.width, 
+                    object.height, 
+                    {
+                        isSensor: true, 
+                        label: 'Pancarte', 
+                        isStatic:true
+                    }
+                );
+                Pancarte.label = 'Pancarte';
+            }
+        });
+
+    }
+
+    toggleMessage(){
+        this.textPancart = this.add.text(500, 500, 'Le chemin est infini', {
+            fontSize: '20px',
+            padding: { x: 20, y: 10 },
+            backgroundColor: '#ffffff',
+            fill: '#000000'
+        });
+        
+        this.textPancart.setScrollFactor(0);
+    }
+
+    displayPancarteMessage() {
+        this.textPancart = this.add.text(500, 500, 'Press E', {
+            fontSize: '20px',
+            padding: { x: 20, y: 10 },
+            backgroundColor: '#ffffff',
+            fill: '#000000'
+        });
+        this.textPancart.setDepth(10);
+        this.textPancart.setScrollFactor(0);
+    }
+
+
+    destroyPancarteMessage(){
+        if (this.textPancart) {
+            this.textPancart.destroy(); 
+            this.textPancart = null;
+        } 
     }
 
 }

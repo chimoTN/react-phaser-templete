@@ -6,6 +6,7 @@ import Phaser from 'phaser';
 import { Preloader } from './scenes/Preloader';
 import { Example } from './scenes/Exemple';
 import { matterForet } from './scenes/matterForet';
+import { Menu } from './scenes/Menu'
 
 // Find out more information about the Game Config at:
 // https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -30,7 +31,8 @@ const config = {
         Game,
         GameOver,
         Example,
-        matterForet
+        matterForet,
+        Menu
     ]
 };
 
