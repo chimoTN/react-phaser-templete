@@ -32,8 +32,8 @@ export default class Player {
         this.dashTime = 0,      // Quand le dash a été initié pour contrôler la durée
         this.canAirDash = true,
         this.speed = {
-            run: 4,
-            jump: 9
+            run: 1.5,
+            jump: 5
         };
         this.stats = {
             pv:20,
@@ -44,8 +44,6 @@ export default class Player {
         this.setupAnimations();
         this.setupSensors(x,y);
         this.setupStats(this.scene);
-
-        console.log("this.matterSprite",this.matterSprite)
     }
 
 
@@ -64,20 +62,24 @@ export default class Player {
         this.sensors.bottom = M.Bodies.rectangle(sx, h, sx, 5, { isSensor: true });
         this.sensors.left = M.Bodies.rectangle(sx - w * 0.45, sy, 5, h * 0.25, { isSensor: true });
         this.sensors.right = M.Bodies.rectangle(sx + w * 0.45, sy, 5, h * 0.25, { isSensor: true });
+        this.sensors.top = M.Bodies.rectangle(sx, 0, sx, 5, { isSensor: true });
+
         const compoundBody = M.Body.create({
             parts: [
-                playerBody, this.sensors.bottom, this.sensors.left,
-                this.sensors.right
+                playerBody, 
+                this.sensors.bottom, 
+                this.sensors.left,
+                this.sensors.right,
+                this.sensors.top
             ],
             friction: 0.01,
-            restitution: 0.05 // Prevent body from sticking against a wall
+            restitution: 0.05
         });
 
         this.matterSprite
             .setExistingBody(compoundBody)
-            .setFixedRotation() // Sets max inertia to prevent rotation
+            .setFixedRotation()
             .setPosition(x, y);
-
 
     }
 
@@ -95,7 +97,7 @@ export default class Player {
             repeat: -1
         });
         this.scene.anims.create({
-            key: 'idle',
+            key: 'midle',
             frames: this.scene.anims.generateFrameNumbers('player', { start: 4, end: 4 }),
             frameRate: 10,
             repeat: -1

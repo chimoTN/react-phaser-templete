@@ -65,6 +65,6 @@ export class Menu extends Scene{
           this.logoTween = null;
       }
 
-      this.scene.start('Example');
+      this.scene.start('Niveau1');
   }
 }
